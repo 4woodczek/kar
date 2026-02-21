@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Calculator, ReceiptText, CircleDollarSign, AlertCircle, TrendingUp, TrendingDown, Award, BarChart3, Target } from 'lucide-react';
+import { Plus, Trash2, CircleDollarSign, AlertCircle, TrendingUp, Award, BarChart3, Target } from 'lucide-react';
 
-const App = () => {
-  // Verileri cihazın yerel depolamasından (LocalStorage) yükle
+// Ana Uygulama Bileşeni
+export default function App() {
+  // Cihazın yerel depolamasından (LocalStorage) verileri yükle
   const [stocks, setStocks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('halka_arz_portfolio_2026');
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error("Veri yüklenemedi:", error);
-      return [];
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('halka_arz_portfolio_2026_v2');
+        return saved ? JSON.parse(saved) : [];
+      } catch (error) {
+        console.error("Veri yüklenemedi:", error);
+        return [];
+      }
     }
+    return [];
   });
 
   const [newStock, setNewStock] = useState({
@@ -22,9 +26,9 @@ const App = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  // Veriler her değiştiğinde LocalStorage'a kaydet (Kalıcılık sağlar)
+  // Veriler değiştikçe telefona/tarayıcıya kaydet
   useEffect(() => {
-    localStorage.setItem('halka_arz_portfolio_2026', JSON.stringify(stocks));
+    localStorage.setItem('halka_arz_portfolio_2026_v2', JSON.stringify(stocks));
   }, [stocks]);
 
   const addStock = (e) => {
@@ -33,10 +37,6 @@ const App = () => {
     
     setStocks([{ ...newStock, id: Date.now() }, ...stocks]);
     setNewStock({ name: '', buyPrice: '', lot: '', sellPrice: '' });
-  };
-
-  const confirmDelete = (id) => {
-    setDeleteConfirm(id);
   };
 
   const executeDelete = () => {
@@ -62,8 +62,8 @@ const App = () => {
     if (stocks.length === 0) return { best: '-', winRate: 0, count: 0 };
     
     const calculated = stocks.map(s => calculateStats(s));
-    const bestStockIndex = calculated.indexOf(calculated.reduce((prev, current) => (parseFloat(prev.percentage) > parseFloat(current.percentage)) ? prev : current));
-    const bestStock = stocks[bestStockIndex];
+    const maxPerc = Math.max(...calculated.map(c => parseFloat(c.percentage)));
+    const bestStock = stocks[calculated.findIndex(c => parseFloat(c.percentage) === maxPerc)];
     const wins = calculated.filter(s => s.profit > 0).length;
     
     return {
@@ -81,7 +81,7 @@ const App = () => {
         
         {/* Onay Modalı */}
         {deleteConfirm && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
             <div className="bg-[#1E293B] rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-slate-700/50">
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-4 border border-rose-500/20">
@@ -91,43 +91,43 @@ const App = () => {
                 <p className="text-slate-400 text-sm font-medium mb-8">Bu işlem verilerini kalıcı olarak siler.</p>
                 <div className="flex gap-3 w-full">
                   <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-6 py-4 bg-slate-800 text-slate-300 font-bold rounded-2xl hover:bg-slate-700 transition-colors">Vazgeç</button>
-                  <button onClick={executeDelete} className="flex-1 px-6 py-4 bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-900/20 hover:bg-rose-500 transition-colors">Sil</button>
+                  <button onClick={executeDelete} className="flex-1 px-6 py-4 bg-rose-600 text-white font-bold rounded-2xl shadow-lg hover:bg-rose-500 transition-colors">Sil</button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Üst Kısım: Başlık ve Toplam Kar */}
+        {/* Başlık ve Toplam Kar */}
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="px-1">
             <div className="flex items-center gap-3 mb-2">
               <div className="bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
                 <TrendingUp size={18} />
               </div>
-              <h1 className="text-[10px] font-black text-slate-500 tracking-[0.2em] uppercase">Halka Arz Takip v2.0</h1>
+              <h1 className="text-[10px] font-black text-slate-500 tracking-[0.2em] uppercase">Halka Arz Portföy 2026</h1>
             </div>
             <div className="flex items-baseline gap-2">
               <p className={`text-4xl md:text-5xl font-black tracking-tight ${totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {totalProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </p>
-              <span className="text-sm font-bold text-slate-500 uppercase">TL Kar</span>
+              <span className="text-sm font-bold text-slate-500 uppercase">TL Net Kar</span>
             </div>
           </div>
           
-          {/* Başarı Karnesi - Mobil Uyumlu */}
+          {/* Başarı Karnesi */}
           <div className="grid grid-cols-3 gap-2 md:flex md:gap-4">
-            <div className="bg-[#1E293B] px-3 py-3 md:px-5 md:py-4 rounded-2xl md:rounded-3xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center md:text-left">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center border border-amber-500/20 mb-2 md:mb-0">
+            <div className="bg-[#1E293B] px-3 py-3 rounded-2xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center">
+              <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center border border-amber-500/20 mb-1 md:mb-0">
                 <Award size={16} />
               </div>
               <div>
                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">En İyi</p>
-                <p className="text-xs font-black text-white truncate max-w-[60px] md:max-w-none">{metrics.best}</p>
+                <p className="text-xs font-black text-white truncate max-w-[60px]">{metrics.best}</p>
               </div>
             </div>
-            <div className="bg-[#1E293B] px-3 py-3 md:px-5 md:py-4 rounded-2xl md:rounded-3xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center md:text-left">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center border border-indigo-500/20 mb-2 md:mb-0">
+            <div className="bg-[#1E293B] px-3 py-3 rounded-2xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center">
+              <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center border border-indigo-500/20 mb-1 md:mb-0">
                 <Target size={16} />
               </div>
               <div>
@@ -135,8 +135,8 @@ const App = () => {
                 <p className="text-xs font-black text-white">%{metrics.winRate}</p>
               </div>
             </div>
-            <div className="bg-[#1E293B] px-3 py-3 md:px-5 md:py-4 rounded-2xl md:rounded-3xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center md:text-left">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-700/50 text-slate-400 rounded-full flex items-center justify-center border border-slate-600/50 mb-2 md:mb-0">
+            <div className="bg-[#1E293B] px-3 py-3 rounded-2xl border border-slate-700/50 shadow-xl flex flex-col md:flex-row items-center md:gap-4 text-center">
+              <div className="w-8 h-8 bg-slate-700/50 text-slate-400 rounded-full flex items-center justify-center border border-slate-600/50 mb-1 md:mb-0">
                 <BarChart3 size={16} />
               </div>
               <div>
@@ -147,35 +147,35 @@ const App = () => {
           </div>
         </div>
 
-        {/* Giriş Formu - Mobil Optimize */}
+        {/* Giriş Formu */}
         <div className="bg-[#1E293B] p-5 md:p-8 rounded-[2rem] shadow-2xl border border-slate-700/50 mb-8">
-          <form onSubmit={addStock} className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 items-end">
+          <form onSubmit={addStock} className="grid grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             <div className="space-y-1.5 col-span-2 md:col-span-1">
               <label className="text-[9px] font-black text-slate-500 ml-1 uppercase tracking-widest">Hisse Kodu</label>
-              <input type="text" placeholder="HİSSE" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none uppercase font-black transition-all placeholder:text-slate-700 text-sm" value={newStock.name} onChange={e => setNewStock({...newStock, name: e.target.value.toUpperCase()})} />
+              <input type="text" placeholder="HİSSE" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none uppercase font-black text-sm" value={newStock.name} onChange={e => setNewStock({...newStock, name: e.target.value.toUpperCase()})} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[9px] font-black text-slate-500 ml-1 uppercase tracking-widest">Alış</label>
-              <input type="number" step="0.01" placeholder="0.00" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none font-black transition-all placeholder:text-slate-700 text-sm" value={newStock.buyPrice} onChange={e => setNewStock({...newStock, buyPrice: e.target.value})} />
+              <input type="number" step="0.01" placeholder="0.00" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none font-black text-sm" value={newStock.buyPrice} onChange={e => setNewStock({...newStock, buyPrice: e.target.value})} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[9px] font-black text-slate-500 ml-1 uppercase tracking-widest">Lot</label>
-              <input type="number" placeholder="0" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none font-black transition-all placeholder:text-slate-700 text-sm" value={newStock.lot} onChange={e => setNewStock({...newStock, lot: e.target.value})} />
+              <input type="number" placeholder="0" className="w-full p-3.5 rounded-xl bg-[#0F172A] border border-slate-700 text-white focus:border-indigo-500 outline-none font-black text-sm" value={newStock.lot} onChange={e => setNewStock({...newStock, lot: e.target.value})} />
             </div>
             <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[9px] font-black text-indigo-400 ml-1 uppercase italic tracking-widest">Satış Fiyatı</label>
-              <input type="number" step="0.01" placeholder="Henüz satılmadı" className="w-full p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/30 text-indigo-300 focus:border-indigo-500 outline-none font-black transition-all placeholder:text-indigo-900 text-sm" value={newStock.sellPrice} onChange={e => setNewStock({...newStock, sellPrice: e.target.value})} />
+              <label className="text-[9px] font-black text-indigo-400 ml-1 uppercase tracking-widest">Satış</label>
+              <input type="number" step="0.01" placeholder="Fiyat Girin" className="w-full p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/30 text-indigo-300 focus:border-indigo-500 outline-none font-black text-sm" value={newStock.sellPrice} onChange={e => setNewStock({...newStock, sellPrice: e.target.value})} />
             </div>
-            <button type="submit" className="col-span-2 md:col-span-1 bg-white hover:bg-indigo-500 hover:text-white text-[#0F172A] font-black p-3.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl uppercase text-[10px] tracking-widest group">
-              <Plus size={16} className="group-hover:rotate-90 transition-transform" /> Kaydet
+            <button type="submit" className="col-span-2 md:col-span-1 bg-white hover:bg-indigo-500 hover:text-white text-[#0F172A] font-black p-3.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl uppercase text-[10px] tracking-widest">
+              <Plus size={16} /> Kaydet
             </button>
           </form>
         </div>
 
-        {/* Kilitli Liste */}
-        <div className="space-y-3 pb-20 md:pb-10">
+        {/* Liste */}
+        <div className="space-y-3 pb-20">
           <div className="flex items-center justify-between px-2 mb-2">
-            <h2 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em]">İşlem Geçmişi</h2>
+            <h2 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em]">Portföy Dökümü</h2>
             <div className="h-px bg-slate-800/50 flex-1 mx-4"></div>
           </div>
 
@@ -189,48 +189,44 @@ const App = () => {
               {stocks.map(stock => {
                 const stats = calculateStats(stock);
                 return (
-                  <div key={stock.id} className="bg-[#1E293B] p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] shadow-xl border border-slate-700/30 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 transition-all hover:border-slate-600/50 group">
-                    {/* Hisse Kodu */}
-                    <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[180px]">
+                  <div key={stock.id} className="bg-[#1E293B] p-4 rounded-[1.5rem] shadow-xl border border-slate-700/30 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs border shadow-inner shrink-0
                         ${stock.sellPrice ? (stats.profit >= 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20') : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
                         {stock.name.substring(0, 3)}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-black text-lg text-white tracking-tight leading-none mb-1">{stock.name}</h3>
+                        <h3 className="font-black text-lg text-white leading-none mb-1">{stock.name}</h3>
                         <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider">{stock.lot} LOT • {stock.buyPrice} TL</p>
                       </div>
-                      {/* Mobil için silme butonu */}
-                      <button onClick={() => confirmDelete(stock.id)} className="md:hidden text-slate-700 hover:text-rose-500 p-2">
+                      <button onClick={() => setDeleteConfirm(stock.id)} className="md:hidden text-slate-700 p-2">
                         <Trash2 size={18} />
                       </button>
                     </div>
 
-                    {/* Veri Analizi */}
                     <div className="grid grid-cols-3 gap-2 w-full flex-1 border-y md:border-y-0 border-slate-800 py-3 md:py-0">
-                      <div className="text-center md:text-left">
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Maliyet</p>
-                        <p className="text-xs font-bold text-slate-300">{stats.cost.toLocaleString('tr-TR', { minimumFractionDigits: 1 })}</p>
+                      <div className="text-center">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Maliyet</p>
+                        <p className="text-xs font-bold text-slate-300">{stats.cost.toLocaleString('tr-TR')}</p>
                       </div>
-                      <div className="text-center md:text-left">
-                        <p className="text-[8px] font-black text-indigo-400/70 uppercase tracking-widest mb-0.5">Satış</p>
-                        <p className="text-xs font-black text-indigo-400">{stock.sellPrice ? parseFloat(stock.sellPrice).toLocaleString('tr-TR', { minimumFractionDigits: 1 }) : '---'}</p>
+                      <div className="text-center">
+                        <p className="text-[8px] font-black text-indigo-400/70 uppercase tracking-widest">Satış</p>
+                        <p className="text-xs font-black text-indigo-400">{stock.sellPrice ? parseFloat(stock.sellPrice).toLocaleString('tr-TR') : '---'}</p>
                       </div>
-                      <div className="text-center md:text-left">
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Net Kar</p>
+                      <div className="text-center">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Kar/Zarar</p>
                         <p className={`text-xs font-black ${stats.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {stock.sellPrice ? stats.profit.toLocaleString('tr-TR', { minimumFractionDigits: 1 }) : '---'}
+                          {stock.sellPrice ? stats.profit.toLocaleString('tr-TR') : '---'}
                         </p>
                       </div>
                     </div>
 
-                    {/* Durum Rozeti */}
-                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto md:min-w-[140px]">
-                      <div className="text-right w-full md:w-auto">
+                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+                      <div className="w-full md:w-auto">
                         {stock.sellPrice ? (
-                          <div className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest text-center
+                          <div className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase text-center
                               ${stats.profit >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                              %{stats.percentage} {stats.profit >= 0 ? 'Kâr' : 'Zarar'}
+                              %{stats.percentage}
                           </div>
                         ) : (
                           <div className="text-[9px] font-black text-amber-500 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/20 tracking-[0.1em] uppercase animate-pulse text-center">
@@ -238,7 +234,7 @@ const App = () => {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => confirmDelete(stock.id)} className="hidden md:block text-slate-700 hover:text-rose-500 transition-all p-2 hover:bg-rose-500/10 rounded-xl">
+                      <button onClick={() => setDeleteConfirm(stock.id)} className="hidden md:block text-slate-700 hover:text-rose-500 p-2">
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -251,6 +247,4 @@ const App = () => {
       </div>
     </div>
   );
-};
-
-export default App;
+}
